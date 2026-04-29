@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="bg">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Интелигентна карта на София</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://unpkg.com" />
+    <link
+      href="https://unpkg.com/maplibre-gl@5.22.0/dist/maplibre-gl.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <main class="map-stage" aria-label="Интерактивна карта на плановите единици на София">
+        <div id="map"></div>
+        <div class="map-topbar">
+          <div>
+            <h1>Интелигентна карта на София</h1>
+            <p>Кликнете върху планова единица, за да видите цени, показатели за качество на живот и инвестиционна привлекателност.</p>
+          </div>
+          <div class="toolbar">
+            <select id="mapMetricSelect" class="metric-select" title="Избор на показател за картата">
+              <option value="score">Инвестиционна привлекателност</option>
+              <option value="salePrice">Продажна цена</option>
+              <option value="rentPrice">Наем</option>
+              <option value="income">Доходи</option>
+              <option value="nve">Училища</option>
+              <option value="infrastructure">Инфраструктура</option>
+              <option value="populationDensity">Гъстота на население</option>
+              <option value="buildingDensity">Застроеност</option>
+            </select>
+            <button id="compareModeButton" class="icon-button" type="button" title="Сравни две планови единици">
+              <span aria-hidden="true">C</span>
+            </button>
+          </div>
+        </div>
+        <div class="legend" aria-label="Легенда на картата">
+          <span id="legendLeft">Надценен</span>
+          <div class="legend-ramp"></div>
+          <span id="legendRight">Подценен</span>
+        </div>
+        <div id="loadingStatus" class="loading-status">Зареждане на данни от СофияПлан...</div>
+      </main>
+
+      <aside class="inspector" aria-label="Профил на района">
+        <section class="panel finder-panel">
+          <div class="panel-header">
+            <div>
+              <span class="section-kicker">Търсачка</span>
+              <h2>Намери възможност</h2>
+            </div>
+          </div>
+          <div class="finder-body">
+            <input id="districtSearch" type="search" placeholder="Търси планова единица..." autocomplete="off" />
+            <div id="topOpportunities" class="opportunity-list"></div>
+          </div>
+        </section>
+
+        <section id="profilePanel" class="panel">
+          <div class="empty-state">
+            <span class="empty-kicker">Профил на район</span>
+            <h2>Изберете планова единица</h2>
+            <p>Панелът съдържа данни за цени на имоти, доходи, гъстота, училища, транспорт, паркове, качество на въздуха и риск от наводнения.</p>
+          </div>
+        </section>
+
+        <section class="panel compare-panel">
+          <div class="panel-header">
+            <div>
+              <span class="section-kicker">Сравнение</span>
+              <h2>Сравнение на два района</h2>
+            </div>
+            <button id="clearCompareButton" type="button" class="text-button">Изчисти</button>
+          </div>
+          <div id="compareSlots" class="compare-slots">
+            <div class="compare-slot">Първи избор</div>
+            <div class="compare-slot">Втори избор</div>
+          </div>
+          <div class="chart-frame">
+            <canvas id="compareChart" aria-label="Радарна диаграма за сравнение на райони"></canvas>
+          </div>
+        </section>
+
+        <section class="panel dataset-panel">
+          <div class="panel-header">
+            <div>
+              <span class="section-kicker">Данни</span>
+              <h2>Статус на наборите от данни</h2>
+            </div>
+          </div>
+          <div id="datasetStatus" class="dataset-status"></div>
+        </section>
+      </aside>
+    </div>
+
+    <script src="https://unpkg.com/maplibre-gl@5.22.0/dist/maplibre-gl.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
