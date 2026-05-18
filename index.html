@@ -19,68 +19,34 @@
         <div class="map-topbar">
           <div>
             <h1>Интелигентна карта на София</h1>
-            <p>Кликнете върху планова единица, за да видите цени, показатели за качество на живот и инвестиционна привлекателност.</p>
-          </div>
-          <div class="toolbar">
-            <select id="mapMetricSelect" class="metric-select" title="Избор на показател за картата">
-              <option value="score">Инвестиционна привлекателност</option>
-              <option value="salePrice">Продажна цена</option>
-              <option value="rentPrice">Наем</option>
-              <option value="income">Доходи</option>
-              <option value="nve">Училища</option>
-              <option value="infrastructure">Инфраструктура</option>
-              <option value="populationDensity">Гъстота на население</option>
-              <option value="buildingDensity">Застроеност</option>
-            </select>
-            <button id="compareModeButton" class="icon-button" type="button" title="Сравни две планови единици">
-              <span aria-hidden="true">C</span>
-            </button>
+            <p>Кликнете върху планова единица за наем и качество на въздуха.</p>
           </div>
         </div>
         <div class="legend" aria-label="Легенда на картата">
-          <span id="legendLeft">Надценен</span>
+          <span id="legendLeft">—</span>
           <div class="legend-ramp"></div>
-          <span id="legendRight">Подценен</span>
+          <span id="legendRight">—</span>
         </div>
         <div id="loadingStatus" class="loading-status">Зареждане на данни от СофияПлан...</div>
+        <section id="profilePanel" class="panel profile-floating hidden" aria-label="Профил на района"></section>
       </main>
 
-      <aside class="inspector" aria-label="Профил на района">
+      <aside class="inspector" aria-label="Странична лента">
         <section class="panel finder-panel">
           <div class="panel-header">
             <div>
               <span class="section-kicker">Търсачка</span>
-              <h2>Намери възможност</h2>
+              <h2>Намери район</h2>
             </div>
           </div>
           <div class="finder-body">
+            <label class="metric-label" for="mapMetricSelect">Показател за картата</label>
+            <select id="mapMetricSelect" class="metric-select metric-select--full">
+              <option value="rentPrice">Наем</option>
+              <option value="airQuality">Качество на въздуха</option>
+            </select>
             <input id="districtSearch" type="search" placeholder="Търси планова единица..." autocomplete="off" />
             <div id="topOpportunities" class="opportunity-list"></div>
-          </div>
-        </section>
-
-        <section id="profilePanel" class="panel">
-          <div class="empty-state">
-            <span class="empty-kicker">Профил на район</span>
-            <h2>Изберете планова единица</h2>
-            <p>Панелът съдържа данни за цени на имоти, доходи, гъстота, училища, транспорт, паркове, качество на въздуха и риск от наводнения.</p>
-          </div>
-        </section>
-
-        <section class="panel compare-panel">
-          <div class="panel-header">
-            <div>
-              <span class="section-kicker">Сравнение</span>
-              <h2>Сравнение на два района</h2>
-            </div>
-            <button id="clearCompareButton" type="button" class="text-button">Изчисти</button>
-          </div>
-          <div id="compareSlots" class="compare-slots">
-            <div class="compare-slot">Първи избор</div>
-            <div class="compare-slot">Втори избор</div>
-          </div>
-          <div class="chart-frame">
-            <canvas id="compareChart" aria-label="Радарна диаграма за сравнение на райони"></canvas>
           </div>
         </section>
 
@@ -97,7 +63,6 @@
     </div>
 
     <script src="https://unpkg.com/maplibre-gl@5.22.0/dist/maplibre-gl.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
