@@ -25,11 +25,14 @@ SOFIA_BBOX = (42.55, 23.18, 42.78, 23.50)
 METRO_QUERY = """
 [out:json][timeout:60];
 (
-  node["station"="subway"]["network"="Sofia Metro"];
   node["station"="subway"](42.55,23.18,42.78,23.50);
   node["railway"="station"]["subway"="yes"](42.55,23.18,42.78,23.50);
+  node["public_transport"="station"]["subway"="yes"](42.55,23.18,42.78,23.50);
+  way["station"="subway"](42.55,23.18,42.78,23.50);
+  way["railway"="station"]["subway"="yes"](42.55,23.18,42.78,23.50);
+  relation["station"="subway"](42.55,23.18,42.78,23.50);
 );
-out;
+out center;
 """.strip()
 
 
@@ -76,6 +79,10 @@ def _to_geojson(elements: list, *, kind: str) -> dict:
     for el in elements:
         lat = el.get("lat")
         lon = el.get("lon")
+        if lat is None or lon is None:
+            center = el.get("center") or {}
+            lat = center.get("lat")
+            lon = center.get("lon")
         if lat is None or lon is None:
             continue
         tags = el.get("tags") or {}

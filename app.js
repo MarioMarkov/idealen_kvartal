@@ -445,12 +445,15 @@ function featureBounds(feature) {
 
 function pointsToBounds(points) {
   if (!points.length) return null;
-  const lons = points.map((p) => p[0]);
-  const lats = points.map((p) => p[1]);
-  return [
-    [Math.min(...lons), Math.min(...lats)],
-    [Math.max(...lons), Math.max(...lats)],
-  ];
+  let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity;
+  for (let i = 0; i < points.length; i++) {
+    const [lon, lat] = points[i];
+    if (lon < minLon) minLon = lon;
+    if (lon > maxLon) maxLon = lon;
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+  }
+  return [[minLon, minLat], [maxLon, maxLat]];
 }
 
 function collectLonLat(value, points) {
