@@ -35,11 +35,20 @@ const els = {
   mapMetricSelect: document.querySelector("#mapMetricSelect"),
   legendLeft: document.querySelector("#legendLeft"),
   legendRight: document.querySelector("#legendRight"),
+  toggleMetro: document.querySelector("#toggleMetro"),
+  toggleStops: document.querySelector("#toggleStops"),
+  metroCount: document.querySelector("#metroCount"),
+  stopsCount: document.querySelector("#stopsCount"),
 };
 
 const MAP_SOURCE_ID = "planning-units";
 const MAP_FILL_LAYER_ID = "planning-units-fill";
 const MAP_LINE_LAYER_ID = "planning-units-line";
+
+const METRO_SOURCE_ID = "transit-metro";
+const METRO_LAYER_ID = "transit-metro-circle";
+const STOPS_SOURCE_ID = "transit-stops";
+const STOPS_LAYER_ID = "transit-stops-circle";
 
 const map = new maplibregl.Map({
   container: "map",
@@ -91,6 +100,105 @@ async function init() {
   drawBoundaries();
   renderTopOpportunities();
   els.loadingStatus.classList.add("hidden");
+
+  loadTransitLayers();
+}
+
+async function loadTransitLayers() {
+  const [metroResult, stopsResult] = await Promise.allSettled([
+    fetch("/api/transit/metro").then((r) => (r.ok ? r.json() : Promise.reject(r.status))),
+    fetch("/api/transit/stops").then((r) => (r.ok ? r.json() : Promise.reject(r.status))),
+  ]);
+
+  if (metroResult.status === "fulfilled") {
+    addMetroLayer(metroResult.value);
+  } else {
+    els.metroCount.textContent = "недостъпно";
+  }
+
+  if (stopsResult.status === "fulfilled") {
+    addStopsLayer(stopsResult.value);
+  } else {
+    els.stopsCount.textContent = "недостъпно";
+  }
+}
+
+function addMetroLayer(geojson) {
+  const count = geojson.features?.length ?? 0;
+  els.metroCount.textContent = `${count} станции`;
+
+  map.addSource(METRO_SOURCE_ID, { type: "geojson", data: geojson });
+
+  map.addLayer({
+    id: METRO_LAYER_ID,
+    type: "circle",
+    source: METRO_SOURCE_ID,
+    paint: {
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 4, 14, 7, 16, 10],
+      "circle-color": "#c1272d",
+      "circle-stroke-color": "#fff",
+      "circle-stroke-width": 1.5,
+      "circle-opacity": 0.95,
+    },
+  });
+
+  map.on("click", METRO_LAYER_ID, (event) => {
+    const f = event.features?.[0];
+    if (!f) return;
+    new maplibregl.Popup({ closeButton: true })
+      .setLngLat(f.geometry.coordinates)
+      .setHTML(`<strong>М · ${escapeHtml(f.properties.name)}</strong><br><small>Код ${escapeHtml(f.properties.code)}</small>`)
+      .addTo(map);
+  });
+  map.on("mouseenter", METRO_LAYER_ID, () => { map.getCanvas().style.cursor = "pointer"; });
+  map.on("mouseleave", METRO_LAYER_ID, () => { map.getCanvas().style.cursor = ""; });
+
+  els.toggleMetro.addEventListener("change", () => {
+    const v = els.toggleMetro.checked ? "visible" : "none";
+    map.setLayoutProperty(METRO_LAYER_ID, "visibility", v);
+  });
+}
+
+function addStopsLayer(geojson) {
+  const count = geojson.features?.length ?? 0;
+  els.stopsCount.textContent = `${count} спирки`;
+
+  map.addSource(STOPS_SOURCE_ID, { type: "geojson", data: geojson });
+
+  // Insert below metro so metro dots stay on top.
+  const beforeId = map.getLayer(METRO_LAYER_ID) ? METRO_LAYER_ID : undefined;
+  map.addLayer({
+    id: STOPS_LAYER_ID,
+    type: "circle",
+    source: STOPS_SOURCE_ID,
+    paint: {
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 1.5, 14, 3.5, 16, 6],
+      "circle-color": "#256b8f",
+      "circle-stroke-color": "#fff",
+      "circle-stroke-width": 1,
+      "circle-opacity": ["interpolate", ["linear"], ["zoom"], 11, 0.45, 14, 0.9],
+    },
+  }, beforeId);
+
+  map.on("click", STOPS_LAYER_ID, (event) => {
+    const f = event.features?.[0];
+    if (!f) return;
+    let lines = f.properties.lines;
+    if (typeof lines === "string") {
+      try { lines = JSON.parse(lines); } catch { lines = []; }
+    }
+    const linesText = Array.isArray(lines) && lines.length ? lines.join(", ") : "—";
+    new maplibregl.Popup({ closeButton: true })
+      .setLngLat(f.geometry.coordinates)
+      .setHTML(`<strong>${escapeHtml(f.properties.name || "Спирка")}</strong><br><small>Код ${escapeHtml(f.properties.code)} · Линии: ${escapeHtml(linesText)}</small>`)
+      .addTo(map);
+  });
+  map.on("mouseenter", STOPS_LAYER_ID, () => { map.getCanvas().style.cursor = "pointer"; });
+  map.on("mouseleave", STOPS_LAYER_ID, () => { map.getCanvas().style.cursor = ""; });
+
+  els.toggleStops.addEventListener("change", () => {
+    map.setLayoutProperty(STOPS_LAYER_ID, "visibility", els.toggleStops.checked ? "visible" : "none");
+  });
 }
 
 function wireControls() {

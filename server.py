@@ -3,6 +3,7 @@ from pathlib import Path
 import os
 
 from datasets import get_or_build_profiles
+from sumc import get_metro_stations, get_surface_stops
 
 
 ROOT = Path(__file__).resolve().parent
@@ -17,6 +18,24 @@ class Handler(SimpleHTTPRequestHandler):
 
         if path == "/api/health":
             self.send_json(b'{"ok":true,"service":"sofia-district-intelligence"}')
+            return
+
+        if path == "/api/transit/metro":
+            try:
+                body = get_metro_stations(force="refresh" in self.path)
+            except Exception as exc:  # noqa: BLE001
+                self.send_error(502, f"SUMC metro fetch failed: {exc}")
+                return
+            self.send_json(body)
+            return
+
+        if path == "/api/transit/stops":
+            try:
+                body = get_surface_stops(force="refresh" in self.path)
+            except Exception as exc:  # noqa: BLE001
+                self.send_error(502, f"SUMC stops fetch failed: {exc}")
+                return
+            self.send_json(body)
             return
 
         if path == "/api/profiles":
@@ -42,8 +61,9 @@ class Handler(SimpleHTTPRequestHandler):
 
 def main():
     port = int(os.environ.get("PORT", "8081"))
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    print(f"Интелигентна карта на София: http://127.0.0.1:{port}")
+    host = os.environ.get("HOST", "0.0.0.0")
+    server = ThreadingHTTPServer((host, port), Handler)
+    print(f"Интелигентна карта на София: http://{host}:{port}")
     print("Отговорите от СофияПлан се кешират в .cache/sofiaplan")
     server.serve_forever()
 

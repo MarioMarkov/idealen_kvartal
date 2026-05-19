@@ -503,6 +503,47 @@ h2 {
   }
 }
 
+.transit-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 2px 2px;
+}
+
+.transit-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.transit-toggle input {
+  margin: 0;
+  accent-color: var(--green);
+}
+
+.transit-toggle small {
+  margin-left: auto;
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(24, 31, 27, 0.35);
+  display: inline-block;
+}
+
+.swatch-metro {
+  background: #c1272d;
+}
+
+.swatch-stops {
+  background: #256b8f;
+}
+
 @media (max-width: 620px) {
   .map-topbar {
     align-items: flex-start;
