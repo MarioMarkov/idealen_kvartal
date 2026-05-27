@@ -44,6 +44,7 @@
             <select id="mapMetricSelect" class="metric-select metric-select--full">
               <option value="rentPrice">Наем</option>
               <option value="airQuality">Качество на въздуха</option>
+              <option value="transitScore">Градски транспорт</option>
             </select>
             <input id="districtSearch" type="search" placeholder="Търси планова единица..." autocomplete="off" />
             <div id="topOpportunities" class="opportunity-list"></div>
@@ -69,6 +70,12 @@
               <span class="swatch swatch-stops"></span>
               <span>Спирки (автобус/трамвай/тролей)</span>
               <small id="stopsCount" class="muted-note"></small>
+            </label>
+            <label class="transit-toggle">
+              <input id="toggleListings" type="checkbox" checked />
+              <span class="swatch swatch-listings"></span>
+              <span>Обяви за наем (imot.bg)</span>
+              <small id="listingsCount" class="muted-note"></small>
             </label>
           </div>
         </section>

@@ -544,6 +544,37 @@ h2 {
   background: #256b8f;
 }
 
+.swatch-listings {
+  background: #c8922e;
+}
+
+.listing-popup {
+  max-width: 240px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.listing-popup img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+
+.listing-popup .listing-price {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.listing-popup .listing-meta {
+  color: var(--muted);
+}
+
+.listing-popup a {
+  color: var(--blue);
+}
+
 @media (max-width: 620px) {
   .map-topbar {
     align-items: flex-start;

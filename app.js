@@ -15,6 +15,13 @@ const METRIC_LABELS = {
     legend: ["Чист въздух", "Замърсен въздух"],
     higherIsBetter: false,
   },
+  transitScore: {
+    title: "Градски транспорт",
+    short: "спирки",
+    unit: "бр.",
+    legend: ["Малко спирки", "Много спирки"],
+    higherIsBetter: true,
+  },
 };
 
 const state = {
@@ -37,8 +44,10 @@ const els = {
   legendRight: document.querySelector("#legendRight"),
   toggleMetro: document.querySelector("#toggleMetro"),
   toggleStops: document.querySelector("#toggleStops"),
+  toggleListings: document.querySelector("#toggleListings"),
   metroCount: document.querySelector("#metroCount"),
   stopsCount: document.querySelector("#stopsCount"),
+  listingsCount: document.querySelector("#listingsCount"),
 };
 
 const MAP_SOURCE_ID = "planning-units";
@@ -49,6 +58,8 @@ const METRO_SOURCE_ID = "transit-metro";
 const METRO_LAYER_ID = "transit-metro-circle";
 const STOPS_SOURCE_ID = "transit-stops";
 const STOPS_LAYER_ID = "transit-stops-circle";
+const LISTINGS_SOURCE_ID = "listings";
+const LISTINGS_LAYER_ID = "listings-circle";
 
 const map = new maplibregl.Map({
   container: "map",
@@ -102,6 +113,7 @@ async function init() {
   els.loadingStatus.classList.add("hidden");
 
   loadTransitLayers();
+  loadListingsLayer();
 }
 
 async function loadTransitLayers() {
@@ -121,6 +133,99 @@ async function loadTransitLayers() {
   } else {
     els.stopsCount.textContent = "недостъпно";
   }
+}
+
+async function loadListingsLayer() {
+  let listings;
+  try {
+    const response = await fetch("/listings.json");
+    if (!response.ok) throw new Error(response.status);
+    listings = await response.json();
+  } catch {
+    els.listingsCount.textContent = "недостъпно";
+    return;
+  }
+
+  const features = listings
+    .filter((l) => isFiniteNumber(l.lat) && isFiniteNumber(l.lng))
+    .map((l) => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [l.lng, l.lat] },
+      properties: {
+        id: l.id,
+        title: l.t || "",
+        price: l.p || "",
+        photo: l.i || "",
+        link: l.il || "",
+        location: l.l || "",
+        content: l.c || "",
+      },
+    }));
+
+  els.listingsCount.textContent = `${features.length} обяви`;
+
+  map.addSource(LISTINGS_SOURCE_ID, {
+    type: "geojson",
+    data: { type: "FeatureCollection", features },
+  });
+
+  map.addLayer({
+    id: LISTINGS_LAYER_ID,
+    type: "circle",
+    source: LISTINGS_SOURCE_ID,
+    paint: {
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 4, 14, 7, 16, 10],
+      "circle-color": "#c8922e",
+      "circle-stroke-color": "#fff",
+      "circle-stroke-width": 1.5,
+      "circle-opacity": 0.95,
+    },
+  });
+
+  map.on("click", LISTINGS_LAYER_ID, (event) => {
+    const f = event.features?.[0];
+    if (!f) return;
+    const p = f.properties;
+    const photo = p.photo
+      ? `<img src="${escapeAttr(absolutizeImg(p.photo))}" alt="" loading="lazy" />`
+      : "";
+    // p.price may include <br> from the source — preserve, but only allow that one tag.
+    const priceHtml = sanitizePriceHtml(p.price);
+    new maplibregl.Popup({ closeButton: true, maxWidth: "260px" })
+      .setLngLat(f.geometry.coordinates)
+      .setHTML(`
+        <div class="listing-popup">
+          ${photo}
+          <div class="listing-price">${priceHtml}</div>
+          <div><strong>${escapeHtml(p.title)}</strong></div>
+          <div class="listing-meta">${escapeHtml(p.location)}</div>
+          <div class="listing-meta">${escapeHtml(p.content)}</div>
+          ${p.link ? `<div><a href="${escapeAttr(p.link)}" target="_blank" rel="noopener">Виж обявата →</a></div>` : ""}
+        </div>
+      `)
+      .addTo(map);
+  });
+  map.on("mouseenter", LISTINGS_LAYER_ID, () => { map.getCanvas().style.cursor = "pointer"; });
+  map.on("mouseleave", LISTINGS_LAYER_ID, () => { map.getCanvas().style.cursor = ""; });
+
+  els.toggleListings.addEventListener("change", () => {
+    map.setLayoutProperty(LISTINGS_LAYER_ID, "visibility", els.toggleListings.checked ? "visible" : "none");
+  });
+}
+
+function absolutizeImg(url) {
+  if (!url) return "";
+  if (url.startsWith("//")) return `https:${url}`;
+  return url;
+}
+
+function sanitizePriceHtml(value) {
+  // Escape everything, then re-allow the literal <br> separator used by imot.bg.
+  return escapeHtml(value).replace(/&lt;br\s*\/?&gt;/gi, "<br />");
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value);
 }
 
 function addMetroLayer(geojson) {
@@ -212,9 +317,17 @@ function wireControls() {
 }
 
 function updateLegendLabels() {
-  const labels = METRIC_LABELS[state.mapMetric].legend;
-  els.legendLeft.textContent = labels[0];
-  els.legendRight.textContent = labels[1];
+  const meta = METRIC_LABELS[state.mapMetric];
+  const range = state.ranges[state.mapMetric] || {};
+  const lo = isFiniteNumber(range.colorMin) ? range.colorMin : range.min;
+  const hi = isFiniteNumber(range.colorMax) ? range.colorMax : range.max;
+  const loText = isFiniteNumber(lo) ? `${formatNumber(lo)} ${meta.unit}` : "";
+  const hiText = isFiniteNumber(hi) ? `${formatNumber(hi)} ${meta.unit}` : "";
+  // Green end of the ramp is always "good"; for higher-is-better metrics that's the high end.
+  const goodLabel = meta.higherIsBetter ? `${meta.legend[1]} (${hiText})` : `${meta.legend[0]} (${loText})`;
+  const badLabel = meta.higherIsBetter ? `${meta.legend[0]} (${loText})` : `${meta.legend[1]} (${hiText})`;
+  els.legendLeft.textContent = badLabel;
+  els.legendRight.textContent = goodLabel;
 }
 
 function drawBoundaries() {
@@ -296,8 +409,12 @@ function styleForFeature(feature) {
 function colorForFeature(feature) {
   const value = feature.properties[state.mapMetric];
   const range = state.ranges[state.mapMetric];
-  if (!isFiniteNumber(value) || !range || range.min === range.max) return "#9aa39b";
-  const t = clamp((value - range.min) / (range.max - range.min), 0, 1);
+  if (!isFiniteNumber(value) || !range) return "#9aa39b";
+  const lo = isFiniteNumber(range.colorMin) ? range.colorMin : range.min;
+  const hi = isFiniteNumber(range.colorMax) ? range.colorMax : range.max;
+  if (lo === hi) return "#9aa39b";
+  let t = clamp((value - lo) / (hi - lo), 0, 1);
+  if (METRIC_LABELS[state.mapMetric]?.higherIsBetter) t = 1 - t;
   return mixColor("#0f7b55", "#bd4d3f", t);
 }
 
@@ -332,11 +449,12 @@ function renderProfile(feature) {
     <div class="metric-grid">
       ${metricCard("rentPrice", p.rentPrice)}
       ${metricCard("airQuality", p.airQuality, p.airSamples)}
+      ${metricCard("transitScore", p.transitScore, null, `М: ${p.metroStops ?? 0} · Спирки: ${p.busStops ?? 0}`)}
     </div>
   `;
 }
 
-function metricCard(metricKey, value, samples) {
+function metricCard(metricKey, value, samples, subOverride) {
   const meta = METRIC_LABELS[metricKey];
   const range = state.ranges[metricKey];
   const valueText = isFiniteNumber(value) ? `${formatNumber(value)} ${meta.unit}` : "N/A";
@@ -346,6 +464,7 @@ function metricCard(metricKey, value, samples) {
     sub = `${Math.abs(delta).toFixed(0)}% ${delta >= 0 ? "над" : "под"} средното`;
     if (samples != null) sub += ` · ${samples} сензор${samples === 1 ? "" : "а"}`;
   }
+  if (subOverride) sub = subOverride;
   const width = isFiniteNumber(value) && range && range.max !== range.min
     ? Math.round(((value - range.min) / (range.max - range.min)) * 100)
     : 0;

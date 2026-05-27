@@ -14,6 +14,8 @@ from typing import Iterable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from sumc import get_metro_stations, get_surface_stops
+
 
 ROOT = Path(__file__).resolve().parent
 CACHE_DIR = ROOT / ".cache" / "sofiaplan"
@@ -42,6 +44,14 @@ DATASETS = {
         "metric": "airQuality",
         "metric_label": "ФПЧ10 (µg/m³)",
         "metric_field": "p1",
+    },
+    "transit": {
+        "id": None,
+        "label": "Градски транспорт (OSM)",
+        "category": "Транспорт",
+        "metric": "transitScore",
+        "metric_label": "Метро + спирки",
+        "external": True,
     },
 }
 
@@ -196,6 +206,19 @@ def _bbox_contains(bbox: tuple[float, float, float, float], point: tuple[float, 
     return bbox[0] <= point[0] <= bbox[2] and bbox[1] <= point[1] <= bbox[3]
 
 
+def _transit_points(geojson_bytes: bytes) -> list[tuple[float, float]]:
+    data = json.loads(geojson_bytes)
+    points: list[tuple[float, float]] = []
+    for feature in data.get("features") or []:
+        coords = (feature.get("geometry") or {}).get("coordinates")
+        if isinstance(coords, list) and len(coords) >= 2:
+            try:
+                points.append((float(coords[0]), float(coords[1])))
+            except (TypeError, ValueError):
+                continue
+    return points
+
+
 def build_profiles() -> dict:
     """Fetch all required datasets, join them, and return the composite payload."""
     boundaries = load_geojson(266)
@@ -209,6 +232,15 @@ def build_profiles() -> dict:
         rent_by_unit = {key: value for key, value in rent_by_unit.items() if value <= cutoff}
     air_points = _latest_air_by_sensor(air.get("features") or [])
 
+    try:
+        metro_points = _transit_points(get_metro_stations())
+    except (HTTPError, URLError, OSError):
+        metro_points = []
+    try:
+        stop_points = _transit_points(get_surface_stops())
+    except (HTTPError, URLError, OSError):
+        stop_points = []
+
     features_out: list[dict] = []
     for feature in boundaries.get("features") or []:
         props = feature.get("properties") or {}
@@ -220,12 +252,20 @@ def build_profiles() -> dict:
 
         bbox = feature_bbox(feature)
         inside_pm = []
+        metro_count = 0
+        stops_count = 0
         if bbox is not None:
             for (point, pm) in air_points:
                 if not _bbox_contains(bbox, point):
                     continue
                 if point_in_feature(point, feature):
                     inside_pm.append(pm)
+            for point in metro_points:
+                if _bbox_contains(bbox, point) and point_in_feature(point, feature):
+                    metro_count += 1
+            for point in stop_points:
+                if _bbox_contains(bbox, point) and point_in_feature(point, feature):
+                    stops_count += 1
         air_value = statistics.fmean(inside_pm) if inside_pm else None
 
         features_out.append({
@@ -238,26 +278,41 @@ def build_profiles() -> dict:
                 "rentPrice": rent_value,
                 "airQuality": air_value,
                 "airSamples": len(inside_pm),
+                "metroStops": metro_count,
+                "busStops": stops_count,
+                "transitScore": metro_count + stops_count,
             },
         })
 
     ranges = {}
-    for metric in ("rentPrice", "airQuality"):
+    for metric in ("rentPrice", "airQuality", "transitScore"):
         values = [f["properties"][metric] for f in features_out if isinstance(f["properties"][metric], (int, float))]
         if values:
+            sorted_values = sorted(values)
+            n = len(sorted_values)
+            p5 = sorted_values[max(0, int(n * 0.05))]
+            p95 = sorted_values[min(n - 1, int(n * 0.95))]
             ranges[metric] = {
                 "min": min(values),
                 "max": max(values),
                 "avg": sum(values) / len(values),
                 "count": len(values),
+                "colorMin": p5,
+                "colorMax": p95,
             }
         else:
-            ranges[metric] = {"min": 0, "max": 1, "avg": None, "count": 0}
+            ranges[metric] = {"min": 0, "max": 1, "avg": None, "count": 0, "colorMin": 0, "colorMax": 1}
 
     dataset_meta = []
     for key, config in DATASETS.items():
         if config.get("internal"):
             continue
+        if config.get("external"):
+            api_url = "https://overpass-api.de/api/interpreter"
+            page_url = "https://www.openstreetmap.org/"
+        else:
+            api_url = f"{SOFIAPLAN_API}/{config['id']}"
+            page_url = SOFIAPLAN_PAGE
         dataset_meta.append({
             "key": key,
             "label": config["label"],
@@ -265,8 +320,8 @@ def build_profiles() -> dict:
             "metric": config["metric"],
             "metricLabel": config["metric_label"],
             "datasetId": config["id"],
-            "apiUrl": f"{SOFIAPLAN_API}/{config['id']}",
-            "pageUrl": SOFIAPLAN_PAGE,
+            "apiUrl": api_url,
+            "pageUrl": page_url,
             "rowCount": ranges[config["metric"]]["count"],
         })
 
