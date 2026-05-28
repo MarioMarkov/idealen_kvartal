@@ -192,7 +192,7 @@ input[type="search"] {
 .profile-floating {
   top: 110px;
   left: 18px;
-  width: min(360px, calc(100% - 36px));
+  width: min(264px, calc(100% - 36px));
   max-height: calc(100vh - 160px);
   overflow: auto;
   border-radius: 8px;
@@ -320,7 +320,7 @@ h2 {
 }
 
 .profile-header {
-  padding: 18px;
+  padding: 10px;
   border-bottom: 1px solid var(--line);
   background: var(--panel-strong);
 }
@@ -333,14 +333,14 @@ h2 {
 }
 
 .profile-header h2 {
-  font-size: 22px;
+  font-size: 16px;
 }
 
 .profile-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .meta-chip {
@@ -355,16 +355,16 @@ h2 {
 .metric-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding: 12px;
+  gap: 6px;
+  padding: 6px;
 }
 
 .metric-card {
-  min-height: 112px;
+  min-height: 80px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
-  padding: 12px;
+  padding: 8px;
 }
 
 .metric-label {
@@ -374,8 +374,8 @@ h2 {
 }
 
 .metric-value {
-  margin-top: 8px;
-  font-size: 24px;
+  margin-top: 5px;
+  font-size: 18px;
   font-weight: 800;
   line-height: 1.05;
 }

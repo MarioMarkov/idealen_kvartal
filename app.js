@@ -153,12 +153,8 @@ async function loadListingsLayer() {
       geometry: { type: "Point", coordinates: [l.lng, l.lat] },
       properties: {
         id: l.id,
-        title: l.t || "",
         price: l.p || "",
-        photo: l.i || "",
         link: l.il || "",
-        location: l.l || "",
-        content: l.c || "",
       },
     }));
 
@@ -186,20 +182,12 @@ async function loadListingsLayer() {
     const f = event.features?.[0];
     if (!f) return;
     const p = f.properties;
-    const photo = p.photo
-      ? `<img src="${escapeAttr(absolutizeImg(p.photo))}" alt="" loading="lazy" />`
-      : "";
-    // p.price may include <br> from the source — preserve, but only allow that one tag.
     const priceHtml = sanitizePriceHtml(p.price);
     new maplibregl.Popup({ closeButton: true, maxWidth: "260px" })
       .setLngLat(f.geometry.coordinates)
       .setHTML(`
         <div class="listing-popup">
-          ${photo}
           <div class="listing-price">${priceHtml}</div>
-          <div><strong>${escapeHtml(p.title)}</strong></div>
-          <div class="listing-meta">${escapeHtml(p.location)}</div>
-          <div class="listing-meta">${escapeHtml(p.content)}</div>
           ${p.link ? `<div><a href="${escapeAttr(p.link)}" target="_blank" rel="noopener">Виж обявата →</a></div>` : ""}
         </div>
       `)
@@ -211,12 +199,6 @@ async function loadListingsLayer() {
   els.toggleListings.addEventListener("change", () => {
     map.setLayoutProperty(LISTINGS_LAYER_ID, "visibility", els.toggleListings.checked ? "visible" : "none");
   });
-}
-
-function absolutizeImg(url) {
-  if (!url) return "";
-  if (url.startsWith("//")) return `https:${url}`;
-  return url;
 }
 
 function sanitizePriceHtml(value) {
